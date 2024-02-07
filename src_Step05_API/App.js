@@ -1,6 +1,5 @@
 import { Component } from 'react';
 import './App.css';
-import axios from 'axios';
 
 /*
     [ API 요청 예시]
@@ -23,19 +22,20 @@ class App extends Component {
 
   getPosts = () => {
     //안드로이드의 onCreate() 메소드에서 하는 준비작업을 비슷하게 여기서 하면된다.
-    axios.get('http://localhost:4000/posts').then((res) => {
-      // res.data에 응답한 내용이 들어있다.
-      console.log(res.data);
-      this.setState({
-        posts: res.data,
+    fetch('http://localhost:4000/posts')
+      .then((res) => res.json())
+      .then((data) => {
+        //data 는 posts 목록이 들어 있는 배열이다 [{},{},...]
+        console.log(data);
+        this.setState({
+          posts: data,
+        });
       });
-    });
   };
 
   render = () => (
     <div className="conatiner">
       <h1>인덱스 페이지</h1>
-      {console.log('asdasdasd: ' + this.state.posts)}
       <table>
         <thead>
           <tr>
@@ -56,14 +56,27 @@ class App extends Component {
                 <button
                   onClick={() => {
                     const title = prompt(item.id + '번 글의 수정할 제목 입력');
+                    // 서버에 전송할 정보를 object에 일단 담는다.
+                    const obj = {
+                      title: title ? title : item.title,
+                    };
+                    // object에 담긴 내용을 이용해서 json 문자열을 얻어낸다.
+                    const jsonStr = JSON.stringify(obj);
 
                     // 일부 수정이므로 PATCH 요청
-                    axios
-                      .patch('http://localhost:4000/posts/' + item.id, {
-                        title: title ? title : item.title,
-                      })
-                      .then((res) => {
+                    fetch('http://localhost:4000/posts/' + item.id, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                      },
+                      body: jsonStr,
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
                         this.getPosts();
+                      })
+                      .catch((err) => {
+                        console.log('수정 중 에러 발생!', err);
                       });
                   }}
                 >
@@ -73,12 +86,16 @@ class App extends Component {
               <td>
                 <button
                   onClick={() => {
-                    axios
-                      .delete('http://localhost:4000/posts/' + item.id)
-                      .then((res) => {
+                    fetch('http://localhost:4000/posts/' + item.id, {
+                      method: 'DELETE',
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
                         this.getPosts();
                       })
-                      .catch((err) => {});
+                      .catch((err) => {
+                        console.log('삭제 중 에러!', err);
+                      });
                   }}
                 >
                   삭제
@@ -101,13 +118,22 @@ class App extends Component {
           const formData = new FormData(e.target);
           const queryString = new URLSearchParams(formData).toString();
 
-          // axios로 post방식 요청
-          axios[method](url, queryString)
-            .then((res) => {
+          fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type':
+                'application/x-www-form-urlencoded; charset=utf-8',
+            },
+            body: queryString,
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              console.log(data);
+              alert(data.id + '번 post 로 등록 되었습니다');
               this.getPosts();
             })
             .catch((err) => {
-              console.log('추가 중 오류!', err);
+              console.log('error 발생!', err);
             });
         }}
       >
